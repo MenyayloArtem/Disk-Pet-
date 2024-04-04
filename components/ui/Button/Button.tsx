@@ -29,7 +29,7 @@ function Button (props : Props) {
       }
     }
 
-    return <button className={"Button flex items-center gap-1 py-2 px-4 " + styles[type]}
+    return <button className={"Button h-[42px] flex items-center gap-1 py-2 px-4 " + styles[type]}
     onClick={() => onClick()}
     >
     {props.before}

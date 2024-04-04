@@ -14,13 +14,13 @@ import Input, { InputType } from "@/components/ui/Input/Input";
 import Tree, { TreeNode } from "@/shared/Tree/Tree";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type FileTypes = "file" | "folder";
+export type FileTypes = "file" | "folder" | null;
 
 function getPercents(val: number, max: number) {
   return (val / max) * 100;
 }
 
-export default function page() {
+export default function Page() {
   const maxSize = 1024;
   const [currentNode, setCurrentNode] = useState<TreeNode | null>(null);
   const [history, setHistory] = useState<string[]>([]);
