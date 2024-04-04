@@ -126,4 +126,44 @@ export default class Tree {
 
     return res.reverse();
   }
+
+  public static createFromJson (name : string, json : any) {
+    const tree = new Tree(name)
+    
+    console.log(json)
+
+    function parseJson (js = json, path : any[] = []) {
+      tree.setCurrent(path)
+      let keys = Object.keys(js)
+      for (let key of keys) {
+        let subkeys = Object.keys(js[key] || {}).length
+        // let subkeys = true
+        // console.log(key,json[key])
+
+        if (subkeys) {
+          tree.addNode(key)
+        } else {
+          tree.addNode(key,{},true)
+        }
+      }
+
+      keys = Object.keys(tree.current.children || {})
+    
+    if (keys.length) {
+        for (let key of keys) {
+            if (tree.current.children![key]?.children) {
+                parseJson(js[key], [...path, key])
+            }
+            // if (tree.current.children && tree.current.children[key]) {
+            //     await readRecursive(tree, [...p, key])
+            // }
+        }
+    }
+    }
+
+    parseJson()
+    
+
+    return tree
+  }
 }

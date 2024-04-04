@@ -13,7 +13,7 @@ import Button, { ButtonTypes } from "@/components/ui/Button/Button";
 import Input, { InputType } from "@/components/ui/Input/Input";
 import Tree, { TreeNode } from "@/shared/Tree/Tree";
 import { useCallback, useEffect, useRef, useState } from "react";
-
+import { createFolder, createTree, readFolder } from "@/shared/createFolder";
 export type FileTypes = "file" | "folder" | null;
 
 function getPercents(val: number, max: number) {
@@ -49,30 +49,16 @@ export default function Page() {
   }, [newElName, newFileType]);
 
   useEffect(() => {
-    let tree = new Tree("app");
-    tree.addNode("signup");
-    tree.addNode("test");
-    tree.setCurrent("signup");
-    tree.addNode("refresh");
-    tree.setCurrent("refresh");
-    tree.addNode("signup");
-    tree.addNode("test");
-    tree.setCurrent("signup");
-    tree.addNode("refresh");
-    tree.setCurrent("refresh");
-    tree.addNode("signup");
-    tree.goToRoot();
-    tree.addNode("file.js",{text: "Lorem ipsum dolor sit amet consectetur adipisicing elit!",},true);
-    tree.setCurrent("test");
-    tree.addNode("signup");
-    tree.addNode("test");
-    tree.setCurrent("signup");
-    tree.addNode("refresh");
-    tree.goToRoot();
-    treeRef.current = tree;
-    let res = treeRef.current.getJson();
-    setTreeSize(JSON.stringify(res).length);
-    update();
+    createTree("dir")
+    .then((res : any) => {
+      let tree = Tree.createFromJson("d",res)
+      treeRef.current = tree;
+      let d = treeRef.current.getJson();
+      setTreeSize(JSON.stringify(d).length);
+      treeRef.current.goToRoot()
+      console.log(treeRef.current)
+      update();
+    })
   }, []);
 
   const update = () => {
@@ -105,6 +91,7 @@ export default function Page() {
             treeRef.current.addNode(name);
           }
 
+          createTree(name)
           update();
           setNewFileType(null);
         } else {
@@ -216,16 +203,16 @@ export default function Page() {
                       return (
                         <TableRow key={item}>
                           <TableCell>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2"
+                            onClick={() => expand(item)}
+                            >
                               {isFolder ? (
                                 <IconFolder
                                   width={14}
-                                  onClick={() => expand(item)}
                                 />
                               ) : (
                                 <IconFile
                                   width={14}
-                                  onClick={() => expand(item)}
                                 />
                               )}
                               {item}

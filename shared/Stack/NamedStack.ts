@@ -12,7 +12,6 @@ export default class NamedStack<T> extends Stack<NamedStackItem<T>> {
 
     // @ts-ignore
     public override push(item: T, name : string) {
-        console.log("F")
         this.body.push({
             name : name,
             data : item
