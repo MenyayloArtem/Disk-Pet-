@@ -10,9 +10,7 @@ export default class Stack<T> {
     public pop (steps? : number) {
         if (this.body.length) {
             if (steps) {
-                console.log(this.body)
                 this.body.splice(-steps,steps)
-                console.log(this.body)
             } else {
                 this.body.pop()
             }

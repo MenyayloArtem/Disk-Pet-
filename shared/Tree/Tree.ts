@@ -1,6 +1,6 @@
 import NamedStack from "../Stack/NamedStack";
 
-export type TreeSearchItem = {node : TreeNode, matched : string}
+export type TreeSearchItem = { node: TreeNode, matched: string }
 
 export class TreeNode {
   key: string;
@@ -53,8 +53,8 @@ export default class Tree {
 
   public setCurrent(key: string | string[]) {
     if (Array.isArray(key)) {
-        this.goToRoot()
-        key.forEach(k => this.setCurrent(k))
+      this.goToRoot()
+      key.forEach(k => this.setCurrent(k))
     } else {
       if (this.current.children) {
         let next = this.current.children[key];
@@ -103,10 +103,9 @@ export default class Tree {
     for (let i in node.children) {
       let item = node.children[i];
       let matched = item.key.match(name)
-      console.log(matched)
       if (matched) {
         result.push({
-            node : item, matched : matched.input!
+          node: item, matched: matched.input!
         });
       }
       this.search(name, item, result);
@@ -127,42 +126,29 @@ export default class Tree {
     return res.reverse();
   }
 
-  public static createFromJson (name : string, json : any) {
+  public static createFromJson(name: string, json: any) {
     const tree = new Tree(name)
-    
-    console.log(json)
 
-    function parseJson (js = json, path : any[] = []) {
-      tree.setCurrent(path)
-      let keys = Object.keys(js)
-      for (let key of keys) {
-        let subkeys = Object.keys(js[key] || {}).length
-        // let subkeys = true
-        // console.log(key,json[key])
+    function parseJson(js = json) {
 
-        if (subkeys) {
-          tree.addNode(key)
-        } else {
-          tree.addNode(key,{},true)
+      if (js) {
+        let keys = Object.keys(js)
+        for (let key of keys) {
+          if ((js[key])) {
+            tree.addNode(key)
+            tree.setCurrent(key)
+            parseJson(js[key])
+            tree.back()
+          } else {
+            tree.addNode(key, {}, true)
+          }
+
         }
       }
+    }
 
-      keys = Object.keys(tree.current.children || {})
-    
-    if (keys.length) {
-        for (let key of keys) {
-            if (tree.current.children![key]?.children) {
-                parseJson(js[key], [...path, key])
-            }
-            // if (tree.current.children && tree.current.children[key]) {
-            //     await readRecursive(tree, [...p, key])
-            // }
-        }
-    }
-    }
 
     parseJson()
-    
 
     return tree
   }

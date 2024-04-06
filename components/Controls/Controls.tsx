@@ -1,5 +1,3 @@
-"use server"
-
 import React, { useState } from 'react';
 import Button, { ButtonTypes } from '../ui/Button/Button';
 import AddFile from '../svg/AddFile';
@@ -12,7 +10,7 @@ interface Props {
     fileType : FileTypes
 }
 
-async function Controls (props : Props) {
+function Controls (props : Props) {
 
     return <div className="flex gap-2 my-2">
     <Button onClick={() => props.onChangeFileType("file")}>
