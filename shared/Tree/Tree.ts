@@ -35,11 +35,13 @@ export default class Tree {
   root: TreeNode;
   current: TreeNode;
   history = new NamedStack<TreeNode>();
+  initialJson : Object
 
   constructor(rootName: string) {
     this.root = new TreeNode(rootName, {});
     this.current = this.root;
     this.history.push(this.current, rootName);
+    this.initialJson = this.getJson()
   }
 
   public addNode(key: string, value: any = {}, isLeaf = false) {
@@ -59,7 +61,7 @@ export default class Tree {
       if (this.current.children) {
         let next = this.current.children[key];
 
-        if (next && next.children) {
+        if (next) {
           this.current = next;
           this.history.push(this.current, key);
         }
@@ -88,7 +90,22 @@ export default class Tree {
 
     for (let i in node.children) {
       let item = node.children[i];
-      data[item.key] = item.value;
+      if (item.children) {
+        data[item.key] = {};
+      } else {
+        if (Object.keys(item.value).length) {
+          data[item.key] = {_value : item.value}
+        } else {
+          data[item.key] = {_value : ""}
+        }
+        
+      }
+
+        // console.log(data[item.value])
+      
+
+
+      
       this.getJson(item, data[item.key]);
     }
 

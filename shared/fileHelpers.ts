@@ -19,8 +19,8 @@ export const createFolder = async (p : string[],name : string) => {
     })
 }
 
-export const createFile = async (p : string[],name : string) => {
-    fs.writeFile(path.join(process.cwd(), "structures", ...p, name), "", (err) => {
+export const createFile = async (p : string[],name : string,value : string) => {
+    fs.writeFile(path.join(process.cwd(), "structures", ...p, name), value, (err) => {
         if (err) {
             throw new Error(err.message)
         }
@@ -68,7 +68,8 @@ const readRecursive = async (name : string|null, node : any = {}, p : string[] =
 
 export interface Commit {
     path : string[],
-    type : "new"|"update"|"delete"
+    type : "new"|"update"|"delete",
+    content? : any
 }
 
 export const createTree = async (name : string) => {
@@ -88,4 +89,20 @@ export const p = async () => {
     // function recursiveCommit () {
 
     // }
+}
+
+export const saveByCommits = (root : string ,commits : Commit[]) => {
+    let sorted = commits.sort((a,b) => a.path.length - b.path.length)
+    // console.log(sorted)
+    sorted.forEach(commit => {
+        let itemPath = commit.path.slice(0,-1)
+        let itemName = commit.path.at(-1)
+        if (commit.content) {
+            console.log(itemPath, itemName, "file", commit.content)
+            createFile([root,...itemPath], itemName!, commit.content?.data || "")
+        } else {
+            console.log(itemPath, itemName, "folder")
+            createFolder([root,...itemPath], itemName!)
+        }
+    })
 }

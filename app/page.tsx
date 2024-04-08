@@ -36,6 +36,18 @@ export default function Page() {
 
   const [dirs, setDirs] = useState<string[]>([])
 
+  // const searchValue = (value: string) => {
+  //   if (treeRef.current) {
+  //     let searched = treeRef.current.search(value);
+  //     setSearched(
+  //       searched.map((s) => ({
+  //         path: treeRef.current!.getPath(s.node),
+  //         matched: s.matched,
+  //       }))
+  //     );
+  //   }
+  // };
+
   useEffect(() => {
     readFolder("")
     .then(res => setDirs(res))
@@ -54,8 +66,12 @@ export default function Page() {
             <TableHead names={tableNames}/>
             <TableBody>
               {
-                dirs.map(dir => <TableRow>
-                <TableCell>
+                dirs.map(dir => <TableRow
+                key={dir}
+                >
+                <TableCell
+                
+                >
                   <div className="flex gap-2">
                     <IconFolder width={14}/>
                     <Link href={`/files/${dir}`}>

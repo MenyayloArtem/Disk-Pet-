@@ -1,30 +1,22 @@
 "use client";
 
-import ProgressBar from "@/components/ProgressBar/ProgressBar";
 import TableCell from "@/components/TableCell/TableCell";
 import TableRow from "@/components/TableRow/TableRow";
 import IconFile from "@/components/svg/File";
 import IconFolder from "@/components/svg/Folder";
-import IconSearch from "@/components/svg/Search";
-import Input, { InputType } from "@/components/ui/Input/Input";
 import Tree, { TreeNode } from "@/shared/Tree/Tree";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Commit, createFile, createFolder, createTree, p, readFolder } from "@/shared/fileHelpers";
+import { Commit, createFile, createFolder, createTree, p, readFolder, saveByCommits } from "@/shared/fileHelpers";
 import TableCaptionHistory from "@/components/TableCaptionHistory/TableCaptionHistory";
 import Controls from "@/components/Controls/Controls";
 import TableCreateItemInput from "@/components/TableCreateItemInput/TableCreateItemInput";
-import { useRouter } from "next/navigation";
-import { Router } from "next/router";
 import Table from "@/components/Table/Table";
 import TableCaption from "@/components/TableCaption/TableCaption";
 import TableHead from "@/components/TableHead/TableHead";
 import TableBody from "@/components/TableBody/TableBody";
 import Button from "@/components/ui/Button/Button";
+import makeCommit from "@/shared/functions/makeCommit";
 export type FileTypes = "file" | "folder" | null;
-
-function getPercents(val: number, max: number) {
-  return (val / max) * 100;
-}
 
 interface Props {
     params : {
@@ -41,8 +33,6 @@ const tableNames = [{
 }]
 
 export default function Page(props : Props) {
-  const maxSize = 1024;
-  const router = useRouter()
   const [currentNode, setCurrentNode] = useState<TreeNode | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const treeRef = useRef<Tree>();
@@ -51,13 +41,22 @@ export default function Page(props : Props) {
   const [initialTree, setInitialTree] = useState<any>(null)
 
   const [search, setSearch] = useState<string>("");
-  const [commits, setCommits] = useState<Commit[]>([])
   const [searched, setSearched] = useState<
     {
       matched: string;
       path: string[];
     }[]
   >([]);
+
+  const [text, setText] = useState<string>("")
+
+  const [currentNodeIsFile, setCurrentNodeIsFile] = useState<boolean>(false)
+
+  useEffect(() => {
+    if (treeRef.current) {
+      setCurrentNodeIsFile(!treeRef.current.current.children)
+    }
+  }, [treeRef.current?.current])
 
   useEffect(() => {
     let path = props.params.path
@@ -67,7 +66,8 @@ export default function Page(props : Props) {
         let tree = Tree.createFromJson(n || "root", res)
         treeRef.current = tree;
         treeRef.current.setCurrent(path.slice(1))
-        let d = treeRef.current.getJson();
+        treeRef.current.initialJson = treeRef.current.getJson()
+        let d = JSON.parse(JSON.stringify(treeRef.current.getJson()));
         setInitialTree(d)
         update();
       })
@@ -76,94 +76,31 @@ export default function Page(props : Props) {
 
   const update = () => {
     if (treeRef.current) {
-  
       setCurrentNode(treeRef.current.current);
       setHistory(treeRef.current.history.names);
       setExpanded(treeRef.current.current.expand());
     }
   };
 
-  function recursiveNest (tree : any, pathes : string[][] = [], currPath : string[] = []) {
-    for (let key of Object.keys(tree)) {
-      
-      let p = [...currPath, key]
-    
-      pathes.push(p)
-    }
-
-    for (let key of Object.keys(tree)) {
-      
-      if (tree[key]) {
-        recursiveNest(tree[key], pathes, [...currPath, key])
+  const saveText = () => {
+    if (currentNodeIsFile && treeRef.current) {
+      treeRef.current.current.value = {
+        data : text
       }
-      // pathes.push(currPath)
-    }
-
-    return pathes
-  }
-
-  function recursive (tree1 : {[x : string] : any}, tree2 : {[x : string] : any}, path : string[] = []) {
-
-    // console.log("res")
-    if (!tree1 || !tree2) {
-      return
-    }
-
-    let tree1Keys = Object.keys(tree1)
-    let tree2Keys = Object.keys(tree2)
-    const ignore : string[] = []
-
-    if (tree1Keys.length) {
-      for (let key of tree2Keys) {
-        if (!tree1Keys.includes(key)) {
-          let commit : Commit = {path : [...path, key], type : "new"}
-          setCommits(c => [...c, commit])
-
-
-          let nested = tree2[key]
-
-          if (nested) {
-            let pathes = recursiveNest(nested)
-            pathes.forEach(p => {
-              setCommits(c => [...c, {
-                path : [...path, key,...p],
-                type : "new"
-              }])
-            })
-          }
-
-        } else {
-          ignore.push(key)
-        }
-        // @ts-ignore
-        recursive(tree1[key]!,tree2[key]!,[...path,key])
-      }
-    } else {
-      return
-    }
-    
-
-    let deleted = tree1Keys.filter(k => !ignore.includes(k))
-    deleted.forEach((d) => {
-      setCommits(c => [...c, {path : [...path,d], type : "delete"}])
-    })
-  }
-
-  const save = () => {
-    // console.log(props.params.path[0], treeRef.current)
-    console.log("save")
-    if (treeRef.current) {
-      // console.log(initialTree, treeRef.current.getJson())
-
-      
-
-      recursive(JSON.parse(JSON.stringify(initialTree)), treeRef.current.getJson())
     }
   }
 
   useEffect(() => {
-    console.log(commits)
-  }, [commits])
+    console.log(treeRef.current?.current)
+  },[ treeRef?.current])
+
+  const save = () => {
+    console.log("save")
+    if (treeRef.current) {
+      let commits = makeCommit(initialTree, treeRef.current.getJson())
+      saveByCommits(props.params.path[0],commits)
+    }
+  }
 
   useEffect(() => {
     if (history.length) {
@@ -173,7 +110,8 @@ export default function Page(props : Props) {
 
   const expand = (key: string) => {
     if (treeRef.current) {
-      if (treeRef.current.current?.children![key].children) {
+      if (true) {
+        console.log(key)
         treeRef.current.setCurrent(key);
 
         update();
@@ -206,18 +144,6 @@ export default function Page(props : Props) {
     [newFileType, history]
   );
 
-  const searchValue = (value: string) => {
-    if (treeRef.current) {
-      let searched = treeRef.current.search(value);
-      setSearched(
-        searched.map((s) => ({
-          path: treeRef.current!.getPath(s.node),
-          matched: s.matched,
-        }))
-      );
-    }
-  };
-
   const goToPath = (path: string[]) => {
     setSearched([]);
     treeRef.current?.setCurrent(path);
@@ -246,10 +172,16 @@ export default function Page(props : Props) {
                       )
                     }
                   />
+                  {currentNodeIsFile ?
+                  <div className="my-2">
+                    <Button
+                    onClick={() => saveText()}
+                    >Save</Button>
+                  </div> :
                   <Controls
                     onChangeFileType={setNewFileType}
                     fileType={newFileType}
-                  />
+                  />}
                 </TableCaption>
 
                 <TableHead names={tableNames}/>
@@ -301,6 +233,15 @@ export default function Page(props : Props) {
                 </TableBody>
               </Table>
             )}
+            {
+              currentNodeIsFile && <textarea className="w-full mt-2 border border-slate-200" name="" id=""
+              value={text}
+              onInput={(e : any) => setText(e.target.value)}
+              >
+
+
+              </textarea>
+            }
             <div className="py-4">
               <Button
               onClick={() => save()}
