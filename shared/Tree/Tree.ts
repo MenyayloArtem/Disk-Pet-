@@ -1,19 +1,21 @@
+import { TreeNodeValue } from "@/app/files/[...path]/page";
 import NamedStack from "../Stack/NamedStack";
+import { excludeIngoneKeys } from "../functions/makeCommit";
 
-export type TreeSearchItem = { node: TreeNode, matched: string }
+export type TreeSearchItem<T> = { node: TreeNode<T>, matched: string }
 
-export class TreeNode {
+export class TreeNode<T> {
   key: string;
-  value: any;
-  parent: TreeNode | null;
+  value: T;
+  parent: TreeNode<T> | null;
   children: {
-    [x: string]: TreeNode;
+    [x: string]: TreeNode<T>;
   } | null;
 
   constructor(
     key: string,
     value: any,
-    parent: TreeNode | null = null,
+    parent: TreeNode<T> | null = null,
     children: {} | null = {}
   ) {
     this.key = key;
@@ -31,10 +33,10 @@ export class TreeNode {
   }
 }
 
-export default class Tree {
-  root: TreeNode;
-  current: TreeNode;
-  history = new NamedStack<TreeNode>();
+export default class Tree<T extends TreeNodeValue> {
+  root: TreeNode<T>;
+  current: TreeNode<T>;
+  history = new NamedStack<TreeNode<T>>();
   initialJson : Object
 
   constructor(rootName: string) {
@@ -83,7 +85,9 @@ export default class Tree {
     }
   }
 
-  public getJson(node?: TreeNode, data: any = {}) {
+  public getJson(node?: TreeNode<T>, data: {
+    [x : string] : any
+  } = {}) {
     if (!node) {
       node = this.root;
     }
@@ -93,12 +97,12 @@ export default class Tree {
       if (item.children) {
         data[item.key] = {};
       } else {
-        if (Object.keys(item.value).length) {
+        if (Object.keys(item.value as any).length) {
           data[item.key] = {_value : item.value}
         } else {
-          data[item.key] = {_value : ""}
+          data[item.key] = {_value : {data : ""}}
         }
-        
+        data[item.key] = null
       }
 
         // console.log(data[item.value])
@@ -115,7 +119,7 @@ export default class Tree {
   public search(
     name: string,
     node = this.root,
-    result: TreeSearchItem[] = []
+    result: TreeSearchItem<T>[] = []
   ) {
     for (let i in node.children) {
       let item = node.children[i];
@@ -131,7 +135,7 @@ export default class Tree {
     return result;
   }
 
-  public getPath(node: TreeNode) {
+  public getPath(node: TreeNode<T>) {
     let item = node;
     let res = [];
 
@@ -143,21 +147,21 @@ export default class Tree {
     return res.reverse();
   }
 
-  public static createFromJson(name: string, json: any) {
-    const tree = new Tree(name)
+  public static createFromJson<T extends TreeNodeValue>(name: string, json: any) {
+    const tree = new Tree<T>(name)
 
     function parseJson(js = json) {
 
       if (js) {
         let keys = Object.keys(js)
-        for (let key of keys) {
+        for (let key of excludeIngoneKeys(js)) {
           if ((js[key])) {
             tree.addNode(key)
             tree.setCurrent(key)
             parseJson(js[key])
             tree.back()
           } else {
-            tree.addNode(key, {}, true)
+            tree.addNode(key, {data : ""}, true)
           }
 
         }

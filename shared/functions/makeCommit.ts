@@ -7,7 +7,7 @@ export interface NestedObject {
     [x : string] : any
 }
 
-const ignoreKeys = ["_value"]
+const ignoreKeys = ["_value","_meta"]
 
 export function excludeIngoneKeys (obj : Object) {
     return Object.keys(obj).filter(k => !ignoreKeys.includes(k))

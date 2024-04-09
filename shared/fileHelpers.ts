@@ -1,7 +1,7 @@
 "use server"
 import fs from "fs"
 import {readdir, stat} from "fs/promises"
-import path from "path"
+import path, { resolve } from "path"
 import Tree, { TreeNode } from "./Tree/Tree"
 import getFolderSize from 'get-folder-size';
 
@@ -38,8 +38,27 @@ export const readFolder = async (fpath : string|string[]) : Promise<string[]> =>
             if (err) reject(err)
         })
     })
-    
 }
+
+const joinPath = (p : string[]) => {
+    return path.join(process.cwd(), "structures", ...p)
+}
+
+export const readFile = async (p : string[]) => {
+    return new Promise((resolve, reject) => {
+        fs.readFile(joinPath(p), {
+            encoding : "utf-8"
+        },(err, data) => {
+            if (err) {
+                reject(err)
+            }
+            console.log(data)
+            resolve(data)
+        })
+    })
+}
+
+// readFile(["dir", "gdfgdf", "nest2", "nest3","file.txt"])
 
 const readRecursive = async (name : string|null, node : any = {}, p : string[] = []) => {
     if (Object.keys(node).length === 0 && !p.length && name) {
@@ -51,8 +70,14 @@ const readRecursive = async (name : string|null, node : any = {}, p : string[] =
         for (let i of files) {
             node[i] = {}
             let stat = fs.lstatSync(path.join(process.cwd(), "structures", ...p, i))
+            // console.log(stat)
             if (stat.isFile()) {
-                node[i] = null
+                node[i] = {
+                    _meta : {
+                        created : stat.birthtime,
+                        updated : stat.atime
+                    }
+                }
             } else {
                 await readRecursive(null, node[i],[...p,i])
             }
@@ -76,19 +101,6 @@ export const createTree = async (name : string) => {
     const tree = new Tree(name)
     tree.addNode(name)
     return await readRecursive(name, {}, [name])
-}
-
-export const p = async () => {
-    // const json1 = await readRecursive(dir)
-    // const json2 = tree.getJson()
-    // const commits : Commit[] = []
-
-    // console.log(json1, json2)
-    console.log("gg")
-
-    // function recursiveCommit () {
-
-    // }
 }
 
 export const saveByCommits = (root : string ,commits : Commit[]) => {
