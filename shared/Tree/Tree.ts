@@ -24,7 +24,7 @@ export class TreeNode<T> {
 
   public expand() {
     if (this.children) {
-      return this.children.map((node) => node.key);
+      return this.children
     } else {
       return [];
     }
@@ -97,6 +97,8 @@ export default class Tree<T> {
         }
       }
     }
+
+    return this.current
   }
 
   public goToRoot() {

@@ -2,8 +2,6 @@
 
 import TableCell from "@/components/TableCell/TableCell";
 import TableRow from "@/components/TableRow/TableRow";
-import IconFile from "@/components/svg/File";
-import IconFolder from "@/components/svg/Folder";
 import Tree, { TreeNode } from "@/shared/Tree/Tree";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -21,6 +19,9 @@ import TableHead from "@/components/TableHead/TableHead";
 import TableBody from "@/components/TableBody/TableBody";
 import Button from "@/components/ui/Button/Button";
 import makeCommit from "@/shared/functions/makeCommit";
+import { usePathname } from "next/navigation";
+import TableFileItem from "@/components/TableFileItem/TableFileItem";
+import splitPathname from "@/shared/functions/splitPathname";
 export type FileTypes = "file" | "folder" | null;
 
 interface Props {
@@ -35,7 +36,10 @@ const tableNames = [
     width: "30%",
   },
   {
-    name: "Info",
+    name: "Created",
+  },
+  {
+    name : "Updated"
   },
   {
     name: "",
@@ -43,13 +47,16 @@ const tableNames = [
   },
 ];
 
+type FileTree = Tree<FileNodeValue>
+export type FileNode = TreeNode<FileNodeValue>
+
 export default function Page(props: Props) {
   const [currentNode, setCurrentNode] =
     useState<TreeNode<FileNodeValue> | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const treeRef = useRef<Tree<FileNodeValue>>();
   const [newFileType, setNewFileType] = useState<FileTypes | null>(null);
-  const [expanded, setExpanded] = useState<string[]>([]);
+  const [expanded, setExpanded] = useState<FileNode[]>([]);
   const [initialTree, setInitialTree] = useState<any>(null);
   const [search, setSearch] = useState<string>("");
   const [text, setText] = useState<string>("");
@@ -61,11 +68,19 @@ export default function Page(props: Props) {
     }[]
   >([]);
 
-  const update = () => {
+  const pathname = usePathname()
+
+  const update = (history? : string[]) => {
     if (treeRef.current) {
-      setCurrentNode(treeRef.current.current);
-      setHistory(treeRef.current.history.names);
-      setExpanded(treeRef.current.current.expand());
+      setCurrentNode(history ? treeRef.current.setCurrent(history) : treeRef.current.current);
+      if (!history) {
+        window.history.pushState(null, "", `/files/${treeRef.current.history.names.filter(n => n).join("/")}`);
+      } else {
+        console.log(history)
+        window.history.back();
+      }
+      
+      setExpanded([...treeRef.current.current.expand()]);
     }
   };
 
@@ -98,9 +113,10 @@ export default function Page(props: Props) {
     }
   };
 
-  const back = (steps?: number) => {
-    if (treeRef.current && steps !== 0) {
+  const back = (steps: number = 1) => {
+    if (treeRef.current && steps !== 0 && treeRef.current.history.names.length > 1) {
       treeRef.current.back(steps);
+      // window.history.back()
       update();
     }
   };
@@ -136,11 +152,6 @@ export default function Page(props: Props) {
     update();
   };
 
-  const checkFileIcon = (key: string) => {
-    let isFolder = treeRef.current?.current.getNode(key)?.children;
-    return isFolder ? <IconFolder width={14} /> : <IconFile width={14} />;
-  };
-
   useEffect(() => {
     if (treeRef.current) {
       setCurrentNodeIsFile(!treeRef.current.current.children);
@@ -165,18 +176,21 @@ export default function Page(props: Props) {
   useEffect(() => {
     if (currentNodeIsFile) {
       setText("");
-      readFile(props.params.path).then((res: any) => {
+      readFile(splitPathname(pathname)).then((res: any) => {
         setText(res);
       });
     }
   }, [currentNodeIsFile]);
 
   useEffect(() => {
-    if (history.length) {
-      window.history.pushState(null, "title", `/files/${history.join("/")}`);
-      // router.push(`/files/${history.join("/")}`)
-    }
-  }, [history]);
+    setHistory(h => {
+      let path = splitPathname(pathname)
+      if (h.length > path.length) {
+        back()
+      }
+      return path
+    })
+  }, [pathname]);
 
   return (
     <div className="bg-white p-3">
@@ -195,6 +209,7 @@ export default function Page(props: Props) {
               </div>
             ) : (
               <Controls
+              onBack={() => back()}
                 onChangeFileType={setNewFileType}
                 fileType={newFileType}
               />
@@ -207,21 +222,7 @@ export default function Page(props: Props) {
             {(!searched.length || (searched.length && !search)) &&
               expanded.map((item) => {
                 return (
-                  <TableRow key={item}>
-                    <TableCell>
-                      <div
-                        className="flex items-center gap-2"
-                        onClick={() => expand(item)}
-                      >
-                        {checkFileIcon(item)}
-                        {item}
-                      </div>
-                    </TableCell>
-                    <TableCell>Info</TableCell>
-                    <TableCell>
-                      <Button onClick={() => deleteNode(item)}>DELETE</Button>
-                    </TableCell>
-                  </TableRow>
+                  <TableFileItem key={item.key} node={item} onDelete={deleteNode} onExpand={expand}/>
                 );
               })}
 

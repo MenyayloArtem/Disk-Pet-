@@ -10,7 +10,9 @@ interface Props {
     after? : React.ReactNode,
     before? : React.ReactNode,
     bottom? : React.ReactNode,
-    type? : InputType
+    type? : InputType,
+    autofocus? : boolean,
+    onInit? : Function
 }
 
 export enum InputType {
@@ -26,6 +28,12 @@ const borderStyles = {
 function Input (props : Props) {
     const [width, setWidth] = useState<string>("auto")
     const ref = useRef<any>()
+
+    useEffect(() => {
+        if (props.onInit) {
+            props.onInit(ref)
+        }
+    },[])
 
     useEffect(() => {
         if (props.onEnterPress && ref.current) {
@@ -66,6 +74,7 @@ function Input (props : Props) {
     </div>
     
     <input type="text" id="input-group-1" ref={ref}
+    autoFocus={props.autofocus}
     className={`bg-gray-50 border text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5  dark:bg-gray-700 
     dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500
     ${borderStyles[borderType]}

@@ -7,12 +7,18 @@ import { FileTypes } from '@/app/page';
 
 interface Props {
     onChangeFileType : (type : FileTypes) => void,
-    fileType : FileTypes
+    fileType : FileTypes,
+    onBack : Function
 }
 
 function Controls (props : Props) {
 
     return <div className="flex gap-2 my-2">
+    <Button
+    onClick={() => props.onBack()}
+    >
+      Back
+    </Button>
     <Button onClick={() => props.onChangeFileType("file")}>
       <AddFile width={22} />
     </Button>

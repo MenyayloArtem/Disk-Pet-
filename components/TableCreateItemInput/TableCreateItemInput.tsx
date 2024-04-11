@@ -1,6 +1,6 @@
 import { FileTypes } from '@/app/page';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import IconFile from '../svg/File';
 import IconFolder from '../svg/Folder';
 import Button from '../ui/Button/Button';
@@ -8,10 +8,12 @@ import Input, { InputType } from '../ui/Input/Input';
 
 interface Props {
     fileType : FileTypes,
-    onCreate : (name : string) => void
+    onCreate : (name : string) => void,
+    inputRef? : any
 }
 
 function TableCreateItemInput ({fileType, onCreate} : Props) {
+  const inputRef = useRef<any>()
     const [fileWarn, setFileWarn] = useState<string>("")
     const [newElName, setNewElName] = useState<string>("");
 
@@ -24,6 +26,10 @@ function TableCreateItemInput ({fileType, onCreate} : Props) {
         }
       }, [newElName, fileType]);
 
+      useEffect(() => {
+        inputRef.current.focus()
+      }, [fileType])
+
     const beforeCreate = (name : string) => {
         if (name) {
             onCreate(name)
@@ -34,6 +40,7 @@ function TableCreateItemInput ({fileType, onCreate} : Props) {
 
     return <div className="flex">
     <Input
+    onInit={(ref : any) => inputRef.current = ref.current}
       placeholder={
         fileType === "file"
           ? "File Name"
