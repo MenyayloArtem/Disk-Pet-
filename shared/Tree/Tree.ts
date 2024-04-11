@@ -1,22 +1,20 @@
-import { TreeNodeValue } from "@/app/files/[...path]/page";
+// import { TreeNodeValue } from "@/app/files/[...path]/page";
 import NamedStack from "../Stack/NamedStack";
-import { excludeIngoneKeys } from "../functions/makeCommit";
+import { FileNode } from "../fileHelpers";
 
-export type TreeSearchItem<T> = { node: TreeNode<T>, matched: string }
+export type TreeSearchItem<T> = { node: TreeNode<T>; matched: string };
 
 export class TreeNode<T> {
   key: string;
   value: T;
   parent: TreeNode<T> | null;
-  children: {
-    [x: string]: TreeNode<T>;
-  } | null;
+  children: TreeNode<T>[] | null = [];
 
   constructor(
     key: string,
     value: any,
     parent: TreeNode<T> | null = null,
-    children: {} | null = {}
+    children: TreeNode<T>[] | null = []
   ) {
     this.key = key;
     this.value = value;
@@ -26,30 +24,60 @@ export class TreeNode<T> {
 
   public expand() {
     if (this.children) {
-      return Object.keys(this.children);
+      return this.children.map((node) => node.key);
     } else {
       return [];
     }
   }
+
+  public getNode(key: string) {
+    if (this.children) {
+      return this.children.find((node) => node.key == key);
+    }
+  }
+
+  public setNode(key: string, newNode: TreeNode<T>) {
+    let node = this.getNode(key);
+    if (node) {
+      node = newNode;
+    }
+  }
+
+  public deleteChildKey (key : string) {
+    let indexToDelete = this.children?.findIndex(node => node.key == key)
+    if (Number(indexToDelete) >= 0) {
+      this.children?.splice(Number(indexToDelete),1)
+    }
+  }
 }
 
-export default class Tree<T extends TreeNodeValue> {
+export default class Tree<T> {
   root: TreeNode<T>;
   current: TreeNode<T>;
   history = new NamedStack<TreeNode<T>>();
-  initialJson : Object
+  initialJson: Object;
 
   constructor(rootName: string) {
     this.root = new TreeNode(rootName, {});
     this.current = this.root;
     this.history.push(this.current, rootName);
-    this.initialJson = this.getJson()
+    this.initialJson = this.getJson();
+  }
+
+  public getNode(key: string) {
+    if (this.current.children) {
+      return this.current.getNode(key);
+    }
+  }
+
+  public setNode(key: string, newNode: TreeNode<T>) {
+    this.current.setNode(key, newNode);
   }
 
   public addNode(key: string, value: any = {}, isLeaf = false) {
-    let node = new TreeNode(key, value, this.current, isLeaf ? null : {});
+    let node = new TreeNode(key, value, this.current, isLeaf ? null : []);
     if (this.current.children) {
-      this.current.children[key] = node;
+      this.current.children.push(node);
     } else {
       throw new Error("Trying append child to the leaf");
     }
@@ -57,11 +85,11 @@ export default class Tree<T extends TreeNodeValue> {
 
   public setCurrent(key: string | string[]) {
     if (Array.isArray(key)) {
-      this.goToRoot()
-      key.forEach(k => this.setCurrent(k))
+      this.goToRoot();
+      key.forEach((k) => this.setCurrent(k));
     } else {
       if (this.current.children) {
-        let next = this.current.children[key];
+        let next = this.current.getNode(key);
 
         if (next) {
           this.current = next;
@@ -85,32 +113,32 @@ export default class Tree<T extends TreeNodeValue> {
     }
   }
 
-  public getJson(node?: TreeNode<T>, data: {
-    [x : string] : any
-  } = {}) {
+  public getJson(
+    node?: TreeNode<T>,
+    data: FileNode = {
+      name : this.root.key,
+      children : []
+    }
+  ) {
     if (!node) {
       node = this.root;
     }
 
-    for (let i in node.children) {
-      let item = node.children[i];
-      if (item.children) {
-        data[item.key] = {};
-      } else {
-        if (Object.keys(item.value as any).length) {
-          data[item.key] = {_value : item.value}
-        } else {
-          data[item.key] = {_value : {data : ""}}
+    if (node.children) {
+      for (let item of node.children) {
+        let newNode : FileNode = {
+          name : item.key,
+          children : [],
+          values : item.value as any
         }
-        data[item.key] = null
+        if (item.children) {
+          data.children?.push(newNode)
+            this.getJson(item,data.children?.at(-1))
+        } else {
+          newNode.children = null
+          data.children?.push(newNode)
+        }
       }
-
-        // console.log(data[item.value])
-      
-
-
-      
-      this.getJson(item, data[item.key]);
     }
 
     return data;
@@ -121,15 +149,17 @@ export default class Tree<T extends TreeNodeValue> {
     node = this.root,
     result: TreeSearchItem<T>[] = []
   ) {
-    for (let i in node.children) {
-      let item = node.children[i];
-      let matched = item.key.match(name)
-      if (matched) {
-        result.push({
-          node: item, matched: matched.input!
-        });
+    if (node.children) {
+      for (let item of node.children) {
+        let matched = item.key.match(name);
+        if (matched) {
+          result.push({
+            node: item,
+            matched: matched.input!,
+          });
+        }
+        this.search(name, item, result);
       }
-      this.search(name, item, result);
     }
 
     return result;
@@ -147,30 +177,29 @@ export default class Tree<T extends TreeNodeValue> {
     return res.reverse();
   }
 
-  public static createFromJson<T extends TreeNodeValue>(name: string, json: any) {
-    const tree = new Tree<T>(name)
+  public static createFromJson<T>(
+    name: string,
+    json: FileNode
+  ) {
+    const tree = new Tree<T>(name);
 
     function parseJson(js = json) {
-
-      if (js) {
-        let keys = Object.keys(js)
-        for (let key of excludeIngoneKeys(js)) {
-          if ((js[key])) {
-            tree.addNode(key)
-            tree.setCurrent(key)
-            parseJson(js[key])
-            tree.back()
+      if (js.children) {
+        for (let node of js.children) {
+          if (node.children) {
+            tree.addNode(node.name,node.values);
+            tree.setCurrent(node.name);
+            parseJson(node);
+            tree.back();
           } else {
-            tree.addNode(key, {data : ""}, true)
+            tree.addNode(node.name, node.values, true);
           }
-
         }
       }
     }
 
+    parseJson();
 
-    parseJson()
-
-    return tree
+    return tree;
   }
 }

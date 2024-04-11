@@ -1,6 +1,6 @@
 "use client"
 
-import { Commit } from "../fileHelpers"
+import { Commit, FileCommit, FileNode, readFile } from "../fileHelpers"
 import copy from "./copy"
 
 export interface NestedObject {
@@ -9,69 +9,64 @@ export interface NestedObject {
 
 const ignoreKeys = ["_value","_meta"]
 
-export function excludeIngoneKeys (obj : Object) {
-    return Object.keys(obj).filter(k => !ignoreKeys.includes(k))
-}
+export default async function makeCommit (initialTree : FileNode, changedTree : FileNode) {
+    const commits : FileCommit[] = []
+    const ignore = []
 
-export function includesIgnoreKey (obj : Object) {
-    return Object.keys(obj).some(k => ignoreKeys.includes(k))
-}
+  async function recursive (tree1 : FileNode, tree2 : FileNode, path : string[] = []) {
 
-export default function makeCommit (initialTree : NestedObject, changedTree : NestedObject) {
-    const commits : Commit[] = []
-
-  function recursive (tree1 : NestedObject, tree2 : NestedObject, path : string[] = []) {
     if (!tree1 || !tree2) {
       return
     }
 
-    let tree1Keys = tree1 ? Object.keys(tree1) : []
-    let tree2Keys = Object.keys(tree2)
-    const ignore : string[] = []
+    if (tree1.children) {
+      for (let node of tree2.children!) {
+        let node1 = tree1.children.find(n => n.name == node.name)
+        if (!node1) {
+          let commit : FileCommit = {path : [...path, node.name], type : "new", content : undefined}
+
+          if (node.children) {
+              await recursive({
+                name : '',
+                children : []
+              }, node, [...path, node.name])
+          } else {
+            commit.content = node.values
 
 
-    if (tree1Keys) {
-      for (let key of tree2Keys) {
-        if (!tree1Keys.includes(key)) {
-          let commit : Commit = {path : [...path, key], type : "new", content : null}
-          
-
-          console.log(tree2[key])
-          if (tree2[key] && excludeIngoneKeys(tree2[key]).length) {
-            // commit.content = null
-            recursive(tree1[key] || [], tree2[key], [...path, key])
-          } else if (includesIgnoreKey(tree2[key])) {
-            commit.content = tree2[key]?._value || {}
           }
-            
-          console.log(commit.path)
           commits.push(commit)
-
+          
         } else {
-          ignore.push(key)
-        }
-        if (tree2[key] && !includesIgnoreKey(tree2[key])) {
-          recursive(tree1[key]!,tree2[key]!,[...path,key])
+        ignore.push(node)
+
+          if (node.values?._meta.updated != node1.values?._meta.updated) {
+            let fileContent = await readFile([initialTree.name,...path, node.name])
+            if (node.values?.data != fileContent) {
+              let commit : FileCommit = {path : [...path, node.name], type : "update", content : node.values!}
+              commits.push(commit)
+            }
+            
+          }
         }
         
-      }
-    } else {
-      return
-    }
-    
-    let deleted = tree1Keys.filter(k => !ignore.includes(k))
-    deleted.forEach((d) => {
-      let commit : Commit = {path : [...path,d], type : "delete"}
-      commits.push(commit)
-    })
+        await recursive(node1!, node, [...path, node.name])
+      } 
+
+      let deleted = tree1.children!.filter(node => {
+        return !tree2.children!.find(c => c.name === node.name)
+      })
+
+      deleted.forEach(item => {
+        commits.push({path : [...path, item.name], type : "delete"})
+      })
+    } 
   }
 
   let initialTreeCopy = copy(initialTree)
   let changedTreeCopy = copy(changedTree)
 
-  console.log(initialTreeCopy,changedTreeCopy)
-
-  recursive(initialTreeCopy,changedTreeCopy)
+  await recursive(initialTreeCopy,changedTreeCopy)
 
   console.log(commits)
   return commits

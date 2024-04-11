@@ -1,6 +1,6 @@
 "use server"
 import fs from "fs"
-import {readdir, stat} from "fs/promises"
+import { readdir, stat } from "fs/promises"
 import path, { resolve } from "path"
 import Tree, { TreeNode } from "./Tree/Tree"
 import getFolderSize from 'get-folder-size';
@@ -8,10 +8,10 @@ import getFolderSize from 'get-folder-size';
 export const dirSize = async () => {
     let size = await getFolderSize.loose(path.join(process.cwd(), "structures"))
     return size
-  }
+}
 
 
-export const createFolder = async (p : string[],name : string) => {
+export const createFolder = async (p: string[], name: string) => {
     fs.mkdir(path.join(process.cwd(), "structures", ...p, name), {}, (err) => {
         if (err) {
             throw new Error(err.message)
@@ -19,7 +19,7 @@ export const createFolder = async (p : string[],name : string) => {
     })
 }
 
-export const createFile = async (p : string[],name : string,value : string) => {
+export const createFile = async (p: string[], name: string, value: string) => {
     fs.writeFile(path.join(process.cwd(), "structures", ...p, name), value, (err) => {
         if (err) {
             throw new Error(err.message)
@@ -27,7 +27,15 @@ export const createFile = async (p : string[],name : string,value : string) => {
     })
 }
 
-export const readFolder = async (fpath : string|string[]) : Promise<string[]> => {
+export const removeFile = async (p: string[]) => {
+    fs.unlink(path.join(process.cwd(), "structures", ...p,), (err) => {
+        if (err) {
+            throw new Error(err.message)
+        }
+    })
+}
+
+export const readFolder = async (fpath: string | string[]): Promise<string[]> => {
     return new Promise((resolve, reject) => {
         let p = fpath as string[]
         if (!Array.isArray(fpath)) {
@@ -40,19 +48,18 @@ export const readFolder = async (fpath : string|string[]) : Promise<string[]> =>
     })
 }
 
-const joinPath = (p : string[]) => {
+const joinPath = (p: string[]) => {
     return path.join(process.cwd(), "structures", ...p)
 }
 
-export const readFile = async (p : string[]) => {
+export const readFile = async (p: string[]) => {
     return new Promise((resolve, reject) => {
         fs.readFile(joinPath(p), {
-            encoding : "utf-8"
-        },(err, data) => {
+            encoding: "utf-8"
+        }, (err, data) => {
             if (err) {
                 reject(err)
             }
-            console.log(data)
             resolve(data)
         })
     })
@@ -60,61 +67,96 @@ export const readFile = async (p : string[]) => {
 
 // readFile(["dir", "gdfgdf", "nest2", "nest3","file.txt"])
 
-const readRecursive = async (name : string|null, node : any = {}, p : string[] = []) => {
-    if (Object.keys(node).length === 0 && !p.length && name) {
+export interface INode<T>{
+    children : INode<T>[]|null,
+    name : string,
+    values? : T 
+}
+
+export interface FileNodeValue {
+    _meta : {
+        created : number,
+        updated : number
+    },
+    data? : string
+}
+
+export type FileNode = INode<FileNodeValue>
+
+const readRecursive = async (name: string | null, p: string[] = []) => {
+    let node : FileNode = {
+        children : [],
+        name : name || ""
+    }
+    if (name) {
         p = [...p, name]
     }
 
     try {
-         let files = await readFolder(p)
-        for (let i of files) {
-            node[i] = {}
-            let stat = fs.lstatSync(path.join(process.cwd(), "structures", ...p, i))
-            // console.log(stat)
-            if (stat.isFile()) {
-                node[i] = {
-                    _meta : {
-                        created : stat.birthtime,
-                        updated : stat.atime
+        let files = await readFolder(p)
+        for (let filename of files) {
+            let stat = fs.lstatSync(path.join(process.cwd(), "structures", ...p, filename))
+            let newNode : FileNode = {
+                values : {
+                    _meta: {
+                        created: new Date(stat.birthtime).getTime(),
+                        updated: new Date(stat.atime).getTime()
                     }
-                }
+                },
+                name: filename,
+                children : []
+            }
+            
+            if (stat.isFile()) {
+                newNode.children = null
+                node.children?.push(newNode)
             } else {
-                await readRecursive(null, node[i],[...p,i])
+                let rf = await readRecursive(filename,p)
+                // newNode.name = filename
+
+                node.children?.push({...newNode,...rf})
             }
         }
-    } catch (e) {
-        console.error(e)
-        return false
     }
-    
+    catch (e) {
+        console.error(e)
+        return null
+    }
+
 
     return node
 }
 
-export interface Commit {
-    path : string[],
-    type : "new"|"update"|"delete",
-    content? : any
+export interface Commit<T> {
+    path: string[],
+    type: "new" | "update" | "delete",
+    content?: T
 }
 
-export const createTree = async (name : string) => {
+export type FileCommit = Commit<FileNodeValue>
+
+export const createTree = async (name: string) : Promise<FileNode|null>=> {
     const tree = new Tree(name)
     tree.addNode(name)
-    return await readRecursive(name, {}, [name])
+    return await readRecursive(name)
 }
 
-export const saveByCommits = (root : string ,commits : Commit[]) => {
-    let sorted = commits.sort((a,b) => a.path.length - b.path.length)
-    // console.log(sorted)
+export const saveByCommits = (root: string, commits: FileCommit[]) => {
+    let sorted = commits.sort((a, b) => a.path.length - b.path.length)
     sorted.forEach(commit => {
-        let itemPath = commit.path.slice(0,-1)
+        let itemPath = commit.path.slice(0, -1)
         let itemName = commit.path.at(-1)
-        if (commit.content) {
-            console.log(itemPath, itemName, "file", commit.content)
-            createFile([root,...itemPath], itemName!, commit.content?.data || "")
-        } else {
-            console.log(itemPath, itemName, "folder")
-            createFolder([root,...itemPath], itemName!)
+        if (commit.type == "new") {
+            if (commit.content) {
+                createFile([root, ...itemPath], itemName!, commit.content?.data || "")
+            } else {
+                createFolder([root, ...itemPath], itemName!)
+            }
+        } else if (commit.type == "delete") {
+            removeFile([root, ...itemPath, itemName!])
+        } else if (commit.type == "update") {
+            createFile([root, ...itemPath], itemName!, String(commit.content?.data))
         }
+        
     })
 }
