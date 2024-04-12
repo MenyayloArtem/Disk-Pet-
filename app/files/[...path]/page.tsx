@@ -48,15 +48,14 @@ const tableNames = [
 ];
 
 type FileTree = Tree<FileNodeValue>
-export type FileNode = TreeNode<FileNodeValue>
+type FileTreeNode = TreeNode<FileNodeValue>
 
 export default function Page(props: Props) {
-  const [currentNode, setCurrentNode] =
-    useState<TreeNode<FileNodeValue> | null>(null);
+  const [currentNode, setCurrentNode] = useState<FileTreeNode | null>(null);
   const [history, setHistory] = useState<string[]>([]);
-  const treeRef = useRef<Tree<FileNodeValue>>();
+  const treeRef = useRef<FileTree>();
   const [newFileType, setNewFileType] = useState<FileTypes | null>(null);
-  const [expanded, setExpanded] = useState<FileNode[]>([]);
+  const [expanded, setExpanded] = useState<FileTreeNode[]>([]);
   const [initialTree, setInitialTree] = useState<any>(null);
   const [search, setSearch] = useState<string>("");
   const [text, setText] = useState<string>("");
@@ -72,14 +71,7 @@ export default function Page(props: Props) {
 
   const update = (history? : string[]) => {
     if (treeRef.current) {
-      setCurrentNode(history ? treeRef.current.setCurrent(history) : treeRef.current.current);
-      if (!history) {
-        window.history.pushState(null, "", `/files/${treeRef.current.history.names.filter(n => n).join("/")}`);
-      } else {
-        console.log(history)
-        window.history.back();
-      }
-      
+      setCurrentNode(history ? treeRef.current.setCurrent(history) :treeRef.current.current);
       setExpanded([...treeRef.current.current.expand()]);
     }
   };
@@ -106,17 +98,16 @@ export default function Page(props: Props) {
 
   const expand = (key: string) => {
     if (treeRef.current) {
-      if (true) {
-        treeRef.current.setCurrent(key);
+      treeRef.current.setCurrent(key);
+        window.history.pushState(null, "", `/files/${treeRef.current.history.names.filter(n => n).join("/")}`);
         update();
       }
-    }
   };
 
   const back = (steps: number = 1) => {
     if (treeRef.current && steps !== 0 && treeRef.current.history.names.length > 1) {
       treeRef.current.back(steps);
-      // window.history.back()
+      window.history.replaceState(null, "", `/files/${treeRef.current.history.names.filter(n => n).join("/")}`);
       update();
     }
   };
@@ -183,14 +174,12 @@ export default function Page(props: Props) {
   }, [currentNodeIsFile]);
 
   useEffect(() => {
-    setHistory(h => {
-      let path = splitPathname(pathname)
-      if (h.length > path.length) {
-        back()
-      }
-      return path
-    })
+    setHistory(splitPathname(pathname))
   }, [pathname]);
+
+  useEffect(() => {
+    update(history)
+  }, [history])
 
   return (
     <div className="bg-white p-3">
@@ -247,7 +236,7 @@ export default function Page(props: Props) {
                     onCreate={addNewElement}
                   />
                 </TableCell>
-                <TableCell>Enter file or folder name</TableCell>
+                <TableCell>Enter file or folder name Lorem1000</TableCell>
               </tr>
             )}
           </TableBody>

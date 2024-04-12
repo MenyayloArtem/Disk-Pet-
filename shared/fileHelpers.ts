@@ -5,14 +5,16 @@ import path, { resolve } from "path"
 import Tree, { TreeNode } from "./Tree/Tree"
 import getFolderSize from 'get-folder-size';
 
+const mainFolder = "structures"
+
 export const dirSize = async () => {
-    let size = await getFolderSize.loose(path.join(process.cwd(), "structures"))
+    let size = await getFolderSize.loose(path.join(process.cwd(), mainFolder))
     return size
 }
 
 
 export const createFolder = async (p: string[], name: string) => {
-    fs.mkdir(path.join(process.cwd(), "structures", ...p, name), {}, (err) => {
+    fs.mkdir(path.join(process.cwd(), mainFolder, ...p, name), {}, (err) => {
         if (err) {
             throw new Error(err.message)
         }
@@ -20,7 +22,7 @@ export const createFolder = async (p: string[], name: string) => {
 }
 
 export const createFile = async (p: string[], name: string, value: string) => {
-    fs.writeFile(path.join(process.cwd(), "structures", ...p, name), value, (err) => {
+    fs.writeFile(path.join(process.cwd(), mainFolder, ...p, name), value, (err) => {
         if (err) {
             throw new Error(err.message)
         }
@@ -28,7 +30,7 @@ export const createFile = async (p: string[], name: string, value: string) => {
 }
 
 export const removeFile = async (p: string[]) => {
-    fs.unlink(path.join(process.cwd(), "structures", ...p,), (err) => {
+    fs.unlink(path.join(process.cwd(), mainFolder, ...p,), (err) => {
         if (err) {
             throw new Error(err.message)
         }
@@ -41,7 +43,7 @@ export const readFolder = async (fpath: string | string[]): Promise<string[]> =>
         if (!Array.isArray(fpath)) {
             p = [fpath]
         }
-        fs.readdir(path.join(process.cwd(), "structures", ...p), {}, (err, files) => {
+        fs.readdir(path.join(process.cwd(), mainFolder, ...p), {}, (err, files) => {
             resolve(files as any)
             if (err) reject(err)
         })
@@ -49,7 +51,7 @@ export const readFolder = async (fpath: string | string[]): Promise<string[]> =>
 }
 
 const joinPath = (p: string[]) => {
-    return path.join(process.cwd(), "structures", ...p)
+    return path.join(process.cwd(), mainFolder, ...p)
 }
 
 export const readFile = async (p: string[]) => {
@@ -81,10 +83,10 @@ export interface FileNodeValue {
     data? : string
 }
 
-export type FileNode = INode<FileNodeValue>
+export type FileNodeJson = INode<FileNodeValue>
 
 const readRecursive = async (name: string | null, p: string[] = []) => {
-    let node : FileNode = {
+    let node : FileNodeJson = {
         children : [],
         name : name || ""
     }
@@ -95,8 +97,8 @@ const readRecursive = async (name: string | null, p: string[] = []) => {
     try {
         let files = await readFolder(p)
         for (let filename of files) {
-            let stat = fs.lstatSync(path.join(process.cwd(), "structures", ...p, filename))
-            let newNode : FileNode = {
+            let stat = fs.lstatSync(path.join(process.cwd(), mainFolder, ...p, filename))
+            let newNode : FileNodeJson = {
                 values : {
                     _meta: {
                         created: new Date(stat.birthtime).getTime(),
@@ -135,7 +137,7 @@ export interface Commit<T> {
 
 export type FileCommit = Commit<FileNodeValue>
 
-export const createTree = async (name: string) : Promise<FileNode|null>=> {
+export const createTree = async (name: string) : Promise<FileNodeJson|null>=> {
     const tree = new Tree(name)
     tree.addNode(name)
     return await readRecursive(name)

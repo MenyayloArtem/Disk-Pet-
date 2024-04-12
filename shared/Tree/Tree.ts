@@ -1,6 +1,6 @@
 // import { TreeNodeValue } from "@/app/files/[...path]/page";
 import NamedStack from "../Stack/NamedStack";
-import { FileNode } from "../fileHelpers";
+import { FileNodeJson } from "../fileHelpers";
 
 export type TreeSearchItem<T> = { node: TreeNode<T>; matched: string };
 
@@ -117,7 +117,7 @@ export default class Tree<T> {
 
   public getJson(
     node?: TreeNode<T>,
-    data: FileNode = {
+    data: FileNodeJson = {
       name : this.root.key,
       children : []
     }
@@ -128,7 +128,7 @@ export default class Tree<T> {
 
     if (node.children) {
       for (let item of node.children) {
-        let newNode : FileNode = {
+        let newNode : FileNodeJson = {
           name : item.key,
           children : [],
           values : item.value as any
@@ -181,7 +181,7 @@ export default class Tree<T> {
 
   public static createFromJson<T>(
     name: string,
-    json: FileNode
+    json: FileNodeJson
   ) {
     const tree = new Tree<T>(name);
 
