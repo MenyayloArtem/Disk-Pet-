@@ -4,14 +4,27 @@ import { readdir, stat } from "fs/promises"
 import path, { resolve } from "path"
 import Tree, { TreeNode } from "./Tree/Tree"
 import getFolderSize from 'get-folder-size';
+import { rejects } from "assert"
 
 const mainFolder = "structures"
+
+const maxSize = 1024*10
 
 export const dirSize = async () => {
     let size = await getFolderSize.loose(path.join(process.cwd(), mainFolder))
     return size
 }
 
+export const createFolderInRoot = (name : string) => {
+    return new Promise((resolve, reject) => {
+        fs.mkdir(path.join(process.cwd(), mainFolder, name), {}, (err) => {
+            if (err) {
+                reject(err.message)
+            }
+            resolve(name)
+        })
+    })
+}
 
 export const createFolder = async (p: string[], name: string) => {
     fs.mkdir(path.join(process.cwd(), mainFolder, ...p, name), {}, (err) => {
@@ -143,22 +156,32 @@ export const createTree = async (name: string) : Promise<FileNodeJson|null>=> {
     return await readRecursive(name)
 }
 
-export const saveByCommits = (root: string, commits: FileCommit[]) => {
-    let sorted = commits.sort((a, b) => a.path.length - b.path.length)
-    sorted.forEach(commit => {
-        let itemPath = commit.path.slice(0, -1)
-        let itemName = commit.path.at(-1)
-        if (commit.type == "new") {
-            if (commit.content) {
-                createFile([root, ...itemPath], itemName!, commit.content?.data || "")
-            } else {
-                createFolder([root, ...itemPath], itemName!)
-            }
-        } else if (commit.type == "delete") {
-            removeFile([root, ...itemPath, itemName!])
-        } else if (commit.type == "update") {
-            createFile([root, ...itemPath], itemName!, String(commit.content?.data))
+export const saveByCommits = async (root: string, commits: FileCommit[]) => {
+    return new Promise(async (resolve, reject) => {
+        let sorted = commits.sort((a, b) => a.path.length - b.path.length)
+        let currentSize = await dirSize()
+        let size = 0
+        sorted.forEach((item) => size += (item.content?.data?.length || 0))
+        if (currentSize + size > maxSize) {
+            reject("Out of range")
+        } else {
+            sorted.forEach(commit => {
+                let itemPath = commit.path.slice(0, -1)
+                let itemName = commit.path.at(-1)
+                if (commit.type == "new") {
+                    if (commit.content) {
+                        createFile([root, ...itemPath], itemName!, commit.content?.data || "")
+                    } else {
+                        createFolder([root, ...itemPath], itemName!)
+                    }
+                } else if (commit.type == "delete") {
+                    removeFile([root, ...itemPath, itemName!])
+                } else if (commit.type == "update") {
+                    createFile([root, ...itemPath], itemName!, String(commit.content?.data))
+                }
+            })
+            resolve("Ok")
         }
-        
     })
+    
 }

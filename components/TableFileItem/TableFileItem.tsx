@@ -14,19 +14,22 @@ interface Props {
     onDelete : (ket : string) => void
 }
 
+export const checkFileIcon = (node : TreeNode<any>) => {
+  let isFolder = node.children;
+  return isFolder ? <IconFolder width={14} /> : <IconFile width={14} />;
+};
+
 function TableFileItem ({node, onExpand, onDelete} : Props) {
 
-    let created = dateToFormat(node.value._meta.created)
-    let updated = dateToFormat(node.value._meta.updated)
+  let now = Date.now()
+    let created = dateToFormat(node.value._meta?.created || now)
+    let updated = dateToFormat(node.value._meta?.updated || now)
 
-    if (created == updated) {
+    if (node.value._meta?.created == node.value._meta?.updated) {
         updated = "-"
     }
 
-    const checkFileIcon = () => {
-        let isFolder = node.children;
-        return isFolder ? <IconFolder width={14} /> : <IconFile width={14} />;
-      };
+    
 
     return <TableRow>
     <TableCell>
@@ -34,10 +37,11 @@ function TableFileItem ({node, onExpand, onDelete} : Props) {
         className="flex items-center gap-2"
         onClick={() => onExpand(node.key)}
       >
-        {checkFileIcon()}
+        {checkFileIcon(node)}
         {node.key}
       </div>
     </TableCell>
+
     <TableCell>{created}</TableCell>
     <TableCell>{updated}</TableCell>
     <TableCell>

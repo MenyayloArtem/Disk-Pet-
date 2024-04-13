@@ -3,6 +3,9 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { dirSize } from "@/shared/fileHelpers";
 import ProgressBar from "@/components/ProgressBar/ProgressBar";
+import Input from "@/components/ui/Input/Input";
+import IconSearch from "@/components/svg/Search";
+import SearchInput from "@/components/SearchInput/SearchInput";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -43,13 +46,7 @@ export default async function RootLayout({
         </aside>
         <main className="grid grid-subgrid grid-rows-[70px_auto] gap-2">
           <div className="bg-white flex items-center p-3">
-            {/* <Input
-              before={<IconSearch width={16} />}
-              placeholder="Search"
-              width={"300px"}
-              onInput={(e: any) => setSearch(e.target.value)}
-              onEnterPress={() => searchValue(search)}
-            /> */}
+            <SearchInput />
           </div>
 
           <div className="bg-white p-3">

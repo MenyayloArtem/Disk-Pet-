@@ -9,7 +9,13 @@ import IconSearch from "@/components/svg/Search";
 import Input, { InputType } from "@/components/ui/Input/Input";
 import Tree, { TreeNode } from "@/shared/Tree/Tree";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createFile, createFolder, createTree, readFolder } from "@/shared/fileHelpers";
+import {
+  createFile,
+  createFolder,
+  createFolderInRoot,
+  createTree,
+  readFolder,
+} from "@/shared/fileHelpers";
 import TableCaptionHistory from "@/components/TableCaptionHistory/TableCaptionHistory";
 import Controls from "@/components/Controls/Controls";
 import TableCreateItemInput from "@/components/TableCreateItemInput/TableCreateItemInput";
@@ -18,77 +24,121 @@ import TableCaption from "@/components/TableCaption/TableCaption";
 import TableHead from "@/components/TableHead/TableHead";
 import TableBody from "@/components/TableBody/TableBody";
 import Link from "next/link";
+import Button, { ButtonTypes } from "@/components/ui/Button/Button";
+import IconFolderAdd from "@/components/svg/AddFolder";
+import IconClose from "@/components/svg/Close";
+import { usePathname, useSearchParams } from "next/navigation";
 export type FileTypes = "file" | "folder" | null;
 
-function getPercents(val: number, max: number) {
-  return (val / max) * 100;
-}
-
-const tableNames = [{
-      name : "Folder Name",
-      width : "30%"
-    },
-    {
-      name : "Info"
-    }]
+const tableNames = [
+  {
+    name: "Folder Name",
+    width: "30%",
+  },
+  {
+    name: "Info",
+  },
+];
 
 export default function Page() {
+  const [dirs, setDirs] = useState<string[]>([]);
+  const [searchedDirs, setSearchedDirs] = useState<string[]>([]);
+  const [showInput, setShowInput] = useState<boolean>(false);
 
-  const [dirs, setDirs] = useState<string[]>([])
+  const pathname = usePathname();
+  const query = useSearchParams();
+  const search = query.get("search");
 
-  // const searchValue = (value: string) => {
-  //   if (treeRef.current) {
-  //     let searched = treeRef.current.search(value);
-  //     setSearched(
-  //       searched.map((s) => ({
-  //         path: treeRef.current!.getPath(s.node),
-  //         matched: s.matched,
-  //       }))
-  //     );
-  //   }
-  // };
+  const createFolder = (name: string) => {
+    createFolderInRoot(name);
+    setDirs((d) => [...d, name]);
+    setShowInput(false);
+  };
 
   useEffect(() => {
-    readFolder("")
-    .then(res => setDirs(res))
-  },[])
- 
+    readFolder("").then((res) => setDirs(res));
+  }, []);
+
+  useEffect(() => {
+    if (search) {
+      setSearchedDirs(dirs.filter((dir) => dir.match(search)));
+    }
+  }, [search, dirs]);
 
   return (
+    <div className="bg-white p-3">
+      <Table>
+        <TableCaption>
+          {search ? (
+            <div className="flex gap-2 items-center">
+              {search}
+            </div>
+          ) : (
+            "Test"
+          )}
 
-
-
-          <div className="bg-white p-3">
-          <Table>
-            <TableCaption>
-              Test
-            </TableCaption>
-            <TableHead names={tableNames}/>
-            <TableBody>
-              {
-                dirs.map(dir => <TableRow
-                key={dir}
+          <div className="flex gap-2 my-2">
+            {
+              search ? <Button onClick={() => window.history.replaceState(null, "", pathname)}>
+              Back
+            </Button> : <>
+              <Button onClick={() => setShowInput(true)}>
+                <IconFolderAdd width={22} />
+              </Button>
+              {showInput && (
+                <Button
+                  type={ButtonTypes.Outlined}
+                  onClick={() => setShowInput(false)}
                 >
-                <TableCell
-                
-                >
+                  <IconClose width={22} />
+                </Button>
+              )}
+            </>
+            }
+            
+          </div>
+        </TableCaption>
+        <TableHead names={tableNames} />
+        <TableBody>
+          {!search &&
+            dirs.map((dir) => (
+              <TableRow key={dir}>
+                <TableCell>
                   <div className="flex gap-2">
-                    <IconFolder width={14}/>
-                    <Link href={`/files/${dir}`}>
-                    {dir}
-                    </Link>
-                    
+                    <IconFolder width={14} />
+                    <Link href={`/files/${dir}`}>{dir}</Link>
                   </div>
                 </TableCell>
-                <TableCell>
-                  Test2
-                </TableCell>
-              </TableRow>)
-              }
-              
-            </TableBody>
-          </Table>
-          </div>
+                <TableCell>Test2</TableCell>
+              </TableRow>
+            ))}
 
+          {search && searchedDirs.map((dir) => (
+              <TableRow key={dir}>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <IconFolder width={14} />
+                    <Link href={`/files/${dir}`}>{dir}</Link>
+                  </div>
+                </TableCell>
+                <TableCell>Test2</TableCell>
+              </TableRow>
+            ))}
+
+          {showInput && (
+            <TableRow>
+              <TableCell>
+                <TableCreateItemInput
+                  fileType={"folder"}
+                  onCreate={createFolder}
+                  names={dirs}
+                />
+              </TableCell>
+              <TableCell>Enter new folder name</TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

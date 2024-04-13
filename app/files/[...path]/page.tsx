@@ -2,7 +2,7 @@
 
 import TableCell from "@/components/TableCell/TableCell";
 import TableRow from "@/components/TableRow/TableRow";
-import Tree, { TreeNode } from "@/shared/Tree/Tree";
+import Tree, { TreeNode, TreeSearchItem } from "@/shared/Tree/Tree";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FileNodeValue,
@@ -19,9 +19,12 @@ import TableHead from "@/components/TableHead/TableHead";
 import TableBody from "@/components/TableBody/TableBody";
 import Button from "@/components/ui/Button/Button";
 import makeCommit from "@/shared/functions/makeCommit";
-import { usePathname } from "next/navigation";
-import TableFileItem from "@/components/TableFileItem/TableFileItem";
+import { usePathname, useSearchParams } from "next/navigation";
+import TableFileItem, {
+  checkFileIcon,
+} from "@/components/TableFileItem/TableFileItem";
 import splitPathname from "@/shared/functions/splitPathname";
+import IconSave from "@/components/svg/Save";
 export type FileTypes = "file" | "folder" | null;
 
 interface Props {
@@ -39,7 +42,7 @@ const tableNames = [
     name: "Created",
   },
   {
-    name : "Updated"
+    name: "Updated",
   },
   {
     name: "",
@@ -47,8 +50,8 @@ const tableNames = [
   },
 ];
 
-type FileTree = Tree<FileNodeValue>
-type FileTreeNode = TreeNode<FileNodeValue>
+type FileTree = Tree<FileNodeValue>;
+type FileTreeNode = TreeNode<FileNodeValue>;
 
 export default function Page(props: Props) {
   const [currentNode, setCurrentNode] = useState<FileTreeNode | null>(null);
@@ -57,7 +60,7 @@ export default function Page(props: Props) {
   const [newFileType, setNewFileType] = useState<FileTypes | null>(null);
   const [expanded, setExpanded] = useState<FileTreeNode[]>([]);
   const [initialTree, setInitialTree] = useState<any>(null);
-  const [search, setSearch] = useState<string>("");
+  const [search, setSearch] = useState<TreeSearchItem<FileNodeValue>[]>([]);
   const [text, setText] = useState<string>("");
   const [currentNodeIsFile, setCurrentNodeIsFile] = useState<boolean>(false);
   const [searched, setSearched] = useState<
@@ -67,11 +70,15 @@ export default function Page(props: Props) {
     }[]
   >([]);
 
-  const pathname = usePathname()
+  const pathname = usePathname();
+  const query = useSearchParams();
+  const searchQuery = query.get("search");
 
-  const update = (history? : string[]) => {
+  const update = (history?: string[]) => {
     if (treeRef.current) {
-      setCurrentNode(history ? treeRef.current.setCurrent(history) :treeRef.current.current);
+      setCurrentNode(
+        history ? treeRef.current.setCurrent(history) : treeRef.current.current
+      );
       setExpanded([...treeRef.current.current.expand()]);
     }
   };
@@ -90,24 +97,44 @@ export default function Page(props: Props) {
 
   const save = () => {
     if (treeRef.current) {
-      makeCommit(initialTree, treeRef.current.getJson()).then((commits) => {
-        saveByCommits(props.params.path[0], commits);
-      });
+      makeCommit(initialTree, treeRef.current.getJson())
+        .then((commits) => {
+          return saveByCommits(props.params.path[0], commits);
+        })
+        .then((res) => {
+          console.log(res);
+        })
+        .catch((err) => {
+          console.warn(err);
+          alert("Ошибка: Недостаточно места для сохранения");
+        });
     }
   };
 
   const expand = (key: string) => {
     if (treeRef.current) {
       treeRef.current.setCurrent(key);
-        window.history.pushState(null, "", `/files/${treeRef.current.history.names.filter(n => n).join("/")}`);
-        update();
-      }
+      window.history.pushState(
+        null,
+        "",
+        `/files/${treeRef.current.history.names.filter((n) => n).join("/")}`
+      );
+      update();
+    }
   };
 
   const back = (steps: number = 1) => {
-    if (treeRef.current && steps !== 0 && treeRef.current.history.names.length > 1) {
+    if (
+      treeRef.current &&
+      steps !== 0 &&
+      treeRef.current.history.names.length > 1
+    ) {
       treeRef.current.back(steps);
-      window.history.replaceState(null, "", `/files/${treeRef.current.history.names.filter(n => n).join("/")}`);
+      window.history.replaceState(
+        null,
+        "",
+        `/files/${treeRef.current.history.names.filter((n) => n).join("/")}`
+      );
       update();
     }
   };
@@ -138,6 +165,11 @@ export default function Page(props: Props) {
   };
 
   const goToPath = (path: string[]) => {
+    window.history.replaceState(
+      null,
+      "",
+      `/files/${props.params.path[0]}/${path.join("/")}`
+    );
     setSearched([]);
     treeRef.current?.setCurrent(path);
     update();
@@ -165,25 +197,35 @@ export default function Page(props: Props) {
   }, []);
 
   useEffect(() => {
+    setText("");
     if (currentNodeIsFile) {
-      setText("");
-      readFile(splitPathname(pathname)).then((res: any) => {
-        setText(res);
-      });
+      readFile(splitPathname(pathname))
+        .then((res: any) => {
+          setText(res);
+        })
+        .catch((e) => {
+          console.warn(e);
+        });
     }
   }, [currentNodeIsFile]);
 
   useEffect(() => {
-    setHistory(splitPathname(pathname))
+    setHistory(splitPathname(pathname));
   }, [pathname]);
 
   useEffect(() => {
-    update(history)
-  }, [history])
+    update(history);
+  }, [history]);
+
+  useEffect(() => {
+    if (searchQuery && treeRef.current) {
+      setSearch(treeRef.current.search(searchQuery));
+    }
+  }, [searchQuery, treeRef.current]);
 
   return (
     <div className="bg-white p-3">
-      {currentNode && (
+      {currentNode && !searchQuery && (
         <Table>
           <TableCaption>
             <TableCaptionHistory
@@ -193,67 +235,110 @@ export default function Page(props: Props) {
               }
             />
             {currentNodeIsFile ? (
-              <div className="my-2">
-                <Button onClick={() => saveText()}>Save</Button>
+              <div className="mt-4">
+                <Button onClick={() => saveText()}>
+                  <IconSave width={24} />
+                </Button>
               </div>
             ) : (
               <Controls
-              onBack={() => back()}
+                onBack={() => back()}
                 onChangeFileType={setNewFileType}
                 fileType={newFileType}
               />
             )}
           </TableCaption>
 
-          <TableHead names={tableNames} />
+          {!currentNodeIsFile && <TableHead names={tableNames} />}
 
           <TableBody>
             {(!searched.length || (searched.length && !search)) &&
               expanded.map((item) => {
                 return (
-                  <TableFileItem key={item.key} node={item} onDelete={deleteNode} onExpand={expand}/>
+                  <TableFileItem
+                    key={item.key}
+                    node={item}
+                    onDelete={deleteNode}
+                    onExpand={expand}
+                  />
                 );
               })}
-
-            {!!searched.length &&
-              search &&
-              searched.map((item, i) => {
-                return (
-                  <TableRow key={i}>
-                    <TableCell>{item.matched}</TableCell>
-                    <TableCell onClick={() => goToPath(item.path)}>
-                      {[treeRef.current?.root.key, ...item.path].join(" > ")}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-
             {newFileType && (
               <tr>
                 <TableCell>
                   <TableCreateItemInput
                     fileType={newFileType}
                     onCreate={addNewElement}
+                    names={expanded.map((item) => item.key)}
                   />
                 </TableCell>
-                <TableCell>Enter file or folder name Lorem1000</TableCell>
+                <TableCell>Enter file or folder name</TableCell>
               </tr>
             )}
           </TableBody>
         </Table>
       )}
+
+      {!!search.length && searchQuery && (
+        <Table>
+          <TableCaption>
+            <div className="flex gap-2 items-center">
+              <Button
+                onClick={() => window.history.replaceState(null, "", pathname)}
+              >
+                Back
+              </Button>
+              {searchQuery}
+            </div>
+          </TableCaption>
+          <TableHead names={[{ name: "Name" }, { name: "Path" }]} />
+          <TableBody>
+            {search.map((item) => {
+              let path = treeRef.current!.getPath(item.node);
+              return (
+                <TableRow key={item.node.key}>
+                  <TableCell onClick={() => goToPath(path)}>
+                    <div className="flex items-center gap-2">
+                      {checkFileIcon(item.node)}
+                      {item.node.key}
+                    </div>
+                  </TableCell>
+                  <TableCell onClick={() => goToPath(path)}>
+                    {path.join(" > ")}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      )}
+
+      {searchQuery && !search.length && (
+        <div className="flex gap-2 items-center text-lg">
+          <div className="text-lg">No result found</div>
+          <Button
+            onClick={() => window.history.replaceState(null, "", pathname)}
+          >
+            Back
+          </Button>
+        </div>
+      )}
+
       {currentNodeIsFile && (
         <textarea
           className="w-full mt-2 border border-slate-200"
           name=""
           id=""
+          rows={20}
           value={text}
           onInput={(e: any) => setText(e.target.value)}
         ></textarea>
       )}
-      <div className="py-4">
-        <Button onClick={() => save()}>Save</Button>
-      </div>
+      {!searchQuery && (
+        <div className="py-4">
+          <Button onClick={() => save()}>Save</Button>
+        </div>
+      )}
     </div>
   );
 }

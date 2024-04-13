@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useEffect, useRef, useState } from 'react';
 import "./Input.scss"
 
@@ -12,7 +14,8 @@ interface Props {
     bottom? : React.ReactNode,
     type? : InputType,
     autofocus? : boolean,
-    onInit? : Function
+    onInit? : Function,
+    value? : string
 }
 
 export enum InputType {
@@ -27,6 +30,7 @@ const borderStyles = {
 
 function Input (props : Props) {
     const [width, setWidth] = useState<string>("auto")
+    const [value, setValue] = useState<string>(props.value || "")
     const ref = useRef<any>()
 
     useEffect(() => {
@@ -56,10 +60,15 @@ function Input (props : Props) {
     }, [props?.onEnterPress])
 
     const onInput = (e : any) => {
+        setValue(e.target.value)
         if (props.onInput) {
             props.onInput(e)
         }
     }
+
+    useEffect(() => {
+        setValue(props?.value || "")
+    }, [props.value])
 
     const borderType = props.type || InputType.Default
 
@@ -68,7 +77,7 @@ function Input (props : Props) {
     style={{width}}
     >
 
-        <div className="relative flex">
+        <div className="relative flex items-center">
             <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
       {props.before}
     </div>
@@ -79,7 +88,8 @@ function Input (props : Props) {
     dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500
     ${borderStyles[borderType]}
     `}
-    placeholder={props.placeholder} 
+    placeholder={props.placeholder}
+    value={value}
     onInput={(e) => onInput(e)}
     />
     {props.after}

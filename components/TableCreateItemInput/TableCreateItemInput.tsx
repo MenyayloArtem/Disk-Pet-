@@ -9,10 +9,11 @@ import Input, { InputType } from '../ui/Input/Input';
 interface Props {
     fileType : FileTypes,
     onCreate : (name : string) => void,
-    inputRef? : any
+    inputRef? : any,
+    names : string[]
 }
 
-function TableCreateItemInput ({fileType, onCreate} : Props) {
+function TableCreateItemInput ({fileType, onCreate, names} : Props) {
   const inputRef = useRef<any>()
     const [fileWarn, setFileWarn] = useState<string>("")
     const [newElName, setNewElName] = useState<string>("");
@@ -24,18 +25,26 @@ function TableCreateItemInput ({fileType, onCreate} : Props) {
         } else {
           setFileWarn("");
         }
-      }, [newElName, fileType]);
+    }, [newElName, fileType]);
 
-      useEffect(() => {
-        inputRef.current.focus()
-      }, [fileType])
+    useEffect(() => {
+      inputRef.current.focus()
+    }, [fileType])
+
+    useEffect(() => {
+      if (names.includes(newElName)) {
+        setFileWarn("Элемент с таким названием уже существует")
+      }
+    }, [newElName])
 
     const beforeCreate = (name : string) => {
+      if (!fileWarn) {
         if (name) {
             onCreate(name)
         } else {
             setFileWarn("Укажите название файла")
         }
+      }
     }
 
     return <div className="flex">
