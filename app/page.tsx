@@ -1,23 +1,13 @@
 "use client";
 
-import ProgressBar from "@/components/ProgressBar/ProgressBar";
 import TableCell from "@/components/TableCell/TableCell";
 import TableRow from "@/components/TableRow/TableRow";
-import IconFile from "@/components/svg/File";
 import IconFolder from "@/components/svg/Folder";
-import IconSearch from "@/components/svg/Search";
-import Input, { InputType } from "@/components/ui/Input/Input";
-import Tree, { TreeNode } from "@/shared/Tree/Tree";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  createFile,
-  createFolder,
   createFolderInRoot,
-  createTree,
   readFolder,
 } from "@/shared/fileHelpers";
-import TableCaptionHistory from "@/components/TableCaptionHistory/TableCaptionHistory";
-import Controls from "@/components/Controls/Controls";
 import TableCreateItemInput from "@/components/TableCreateItemInput/TableCreateItemInput";
 import Table from "@/components/Table/Table";
 import TableCaption from "@/components/TableCaption/TableCaption";
@@ -62,6 +52,8 @@ export default function Page() {
   useEffect(() => {
     if (search) {
       setSearchedDirs(dirs.filter((dir) => dir.match(search)));
+    } else {
+      setSearchedDirs(dirs);
     }
   }, [search, dirs]);
 
@@ -70,60 +62,48 @@ export default function Page() {
       <Table>
         <TableCaption>
           {search ? (
-            <div className="flex gap-2 items-center">
-              {search}
-            </div>
+            <div className="flex gap-2 items-center">{search}</div>
           ) : (
             "Test"
           )}
 
           <div className="flex gap-2 my-2">
-            {
-              search ? <Button onClick={() => window.history.replaceState(null, "", pathname)}>
-              Back
-            </Button> : <>
-              <Button onClick={() => setShowInput(true)}>
-                <IconFolderAdd width={22} />
+            {search ? (
+              <Button
+                onClick={() => window.history.replaceState(null, "", pathname)}
+              >
+                Back
               </Button>
-              {showInput && (
-                <Button
-                  type={ButtonTypes.Outlined}
-                  onClick={() => setShowInput(false)}
-                >
-                  <IconClose width={22} />
+            ) : (
+              <>
+                <Button onClick={() => setShowInput(true)}>
+                  <IconFolderAdd width={22} />
                 </Button>
-              )}
-            </>
-            }
-            
+                {showInput && (
+                  <Button
+                    type={ButtonTypes.Outlined}
+                    onClick={() => setShowInput(false)}
+                  >
+                    <IconClose width={22} />
+                  </Button>
+                )}
+              </>
+            )}
           </div>
         </TableCaption>
         <TableHead names={tableNames} />
         <TableBody>
-          {!search &&
-            dirs.map((dir) => (
-              <TableRow key={dir}>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <IconFolder width={14} />
-                    <Link href={`/files/${dir}`}>{dir}</Link>
-                  </div>
-                </TableCell>
-                <TableCell>Test2</TableCell>
-              </TableRow>
-            ))}
-
-          {search && searchedDirs.map((dir) => (
-              <TableRow key={dir}>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <IconFolder width={14} />
-                    <Link href={`/files/${dir}`}>{dir}</Link>
-                  </div>
-                </TableCell>
-                <TableCell>Test2</TableCell>
-              </TableRow>
-            ))}
+          {searchedDirs.map((dir) => (
+            <TableRow key={dir}>
+              <TableCell>
+                <div className="flex gap-2">
+                  <IconFolder width={14} />
+                  <Link href={`/files/${dir}`}>{dir}</Link>
+                </div>
+              </TableCell>
+              <TableCell>Test2</TableCell>
+            </TableRow>
+          ))}
 
           {showInput && (
             <TableRow>
