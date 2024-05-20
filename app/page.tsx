@@ -4,10 +4,7 @@ import TableCell from "@/components/TableCell/TableCell";
 import TableRow from "@/components/TableRow/TableRow";
 import IconFolder from "@/components/svg/Folder";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  createFolderInRoot,
-  readFolder,
-} from "@/shared/fileHelpers";
+import { createFolderInRoot, readFolder } from "@/shared/fileHelpers";
 import TableCreateItemInput from "@/components/TableCreateItemInput/TableCreateItemInput";
 import Table from "@/components/Table/Table";
 import TableCaption from "@/components/TableCaption/TableCaption";

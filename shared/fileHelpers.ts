@@ -1,187 +1,204 @@
-"use server"
-import fs from "fs"
-import { readdir, stat } from "fs/promises"
-import path, { resolve } from "path"
-import Tree, { TreeNode } from "./Tree/Tree"
-import getFolderSize from 'get-folder-size';
-import { rejects } from "assert"
+"use server";
+import fs from "fs";
+import { readdir, stat } from "fs/promises";
+import path, { resolve } from "path";
+import Tree, { TreeNode } from "./Tree/Tree";
+import getFolderSize from "get-folder-size";
+import { rejects } from "assert";
 
-const mainFolder = "structures"
+const mainFolder = "structures";
 
-const maxSize = 1024*10
+const maxSize = 1024 * 10;
 
 export const dirSize = async () => {
-    let size = await getFolderSize.loose(path.join(process.cwd(), mainFolder))
-    return size
-}
+  let size = await getFolderSize.loose(path.join(process.cwd(), mainFolder));
+  return size;
+};
 
-export const createFolderInRoot = (name : string) => {
-    return new Promise((resolve, reject) => {
-        fs.mkdir(path.join(process.cwd(), mainFolder, name), {}, (err) => {
-            if (err) {
-                reject(err.message)
-            }
-            resolve(name)
-        })
-    })
-}
+export const createFolderInRoot = (name: string) => {
+  return new Promise((resolve, reject) => {
+    fs.mkdir(path.join(process.cwd(), mainFolder, name), {}, (err) => {
+      if (err) {
+        reject(err.message);
+      }
+      resolve(name);
+    });
+  });
+};
 
 export const createFolder = async (p: string[], name: string) => {
-    fs.mkdir(path.join(process.cwd(), mainFolder, ...p, name), {}, (err) => {
-        if (err) {
-            throw new Error(err.message)
-        }
-    })
-}
+  fs.mkdir(path.join(process.cwd(), mainFolder, ...p, name), {}, (err) => {
+    if (err) {
+      throw new Error(err.message);
+    }
+  });
+};
 
 export const createFile = async (p: string[], name: string, value: string) => {
-    fs.writeFile(path.join(process.cwd(), mainFolder, ...p, name), value, (err) => {
-        if (err) {
-            throw new Error(err.message)
-        }
-    })
-}
+  fs.writeFile(
+    path.join(process.cwd(), mainFolder, ...p, name),
+    value,
+    (err) => {
+      if (err) {
+        throw new Error(err.message);
+      }
+    }
+  );
+};
 
 export const removeFile = async (p: string[]) => {
-    fs.unlink(path.join(process.cwd(), mainFolder, ...p,), (err) => {
-        if (err) {
-            throw new Error(err.message)
-        }
-    })
-}
+  fs.unlink(path.join(process.cwd(), mainFolder, ...p), (err) => {
+    if (err) {
+      throw new Error(err.message);
+    }
+  });
+};
 
-export const readFolder = async (fpath: string | string[]): Promise<string[]> => {
-    return new Promise((resolve, reject) => {
-        let p = fpath as string[]
-        if (!Array.isArray(fpath)) {
-            p = [fpath]
-        }
-        fs.readdir(path.join(process.cwd(), mainFolder, ...p), {}, (err, files) => {
-            resolve(files as any)
-            if (err) reject(err)
-        })
-    })
-}
+export const readFolder = async (
+  fpath: string | string[]
+): Promise<string[]> => {
+  return new Promise((resolve, reject) => {
+    let p = fpath as string[];
+    if (!Array.isArray(fpath)) {
+      p = [fpath];
+    }
+    fs.readdir(path.join(process.cwd(), mainFolder, ...p), {}, (err, files) => {
+      resolve(files as any);
+      if (err) reject(err);
+    });
+  });
+};
 
 const joinPath = (p: string[]) => {
-    return path.join(process.cwd(), mainFolder, ...p)
-}
+  return path.join(process.cwd(), mainFolder, ...p);
+};
 
 export const readFile = async (p: string[]) => {
-    return new Promise((resolve, reject) => {
-        fs.readFile(joinPath(p), {
-            encoding: "utf-8"
-        }, (err, data) => {
-            if (err) {
-                reject(err)
-            }
-            resolve(data)
-        })
-    })
-}
+  return new Promise((resolve, reject) => {
+    fs.readFile(
+      joinPath(p),
+      {
+        encoding: "utf-8",
+      },
+      (err, data) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(data);
+      }
+    );
+  });
+};
 
-// readFile(["dir", "gdfgdf", "nest2", "nest3","file.txt"])
-
-export interface INode<T>{
-    children : INode<T>[]|null,
-    name : string,
-    values? : T 
+export interface INode<T> {
+  children: INode<T>[] | null;
+  name: string;
+  values?: T;
 }
 
 export interface FileNodeValue {
-    _meta : {
-        created : number,
-        updated : number
-    },
-    data? : string
+  _meta: {
+    created: number;
+    updated: number;
+  };
+  data?: string;
 }
 
-export type FileNodeJson = INode<FileNodeValue>
+export type FileNodeJson = INode<FileNodeValue>;
 
 const readRecursive = async (name: string | null, p: string[] = []) => {
-    let node : FileNodeJson = {
-        children : [],
-        name : name || ""
-    }
-    if (name) {
-        p = [...p, name]
-    }
+  let node: FileNodeJson = {
+    children: [],
+    name: name || "",
+  };
+  if (name) {
+    p = [...p, name];
+  }
 
-    try {
-        let files = await readFolder(p)
-        for (let filename of files) {
-            let stat = fs.lstatSync(path.join(process.cwd(), mainFolder, ...p, filename))
-            let newNode : FileNodeJson = {
-                values : {
-                    _meta: {
-                        created: new Date(stat.birthtime).getTime(),
-                        updated: new Date(stat.atime).getTime()
-                    }
-                },
-                name: filename,
-                children : []
-            }
-            
-            if (stat.isFile()) {
-                newNode.children = null
-                node.children?.push(newNode)
-            } else {
-                let rf = await readRecursive(filename,p)
-                // newNode.name = filename
+  try {
+    let files = await readFolder(p);
+    for (let filename of files) {
+      let stat = fs.lstatSync(
+        path.join(process.cwd(), mainFolder, ...p, filename)
+      );
+      let newNode: FileNodeJson = {
+        values: {
+          _meta: {
+            created: new Date(stat.birthtime).getTime(),
+            updated: new Date(stat.atime).getTime(),
+          },
+        },
+        name: filename,
+        children: [],
+      };
 
-                node.children?.push({...newNode,...rf})
-            }
-        }
+      if (stat.isFile()) {
+        newNode.children = null;
+        node.children?.push(newNode);
+      } else {
+        let rf = await readRecursive(filename, p);
+        // newNode.name = filename
+
+        node.children?.push({ ...newNode, ...rf });
+      }
     }
-    catch (e) {
-        console.error(e)
-        return null
-    }
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
 
-
-    return node
-}
+  return node;
+};
 
 export interface Commit<T> {
-    path: string[],
-    type: "new" | "update" | "delete",
-    content?: T
+  path: string[];
+  type: "new" | "update" | "delete";
+  content?: T;
 }
 
-export type FileCommit = Commit<FileNodeValue>
+export type FileCommit = Commit<FileNodeValue>;
 
-export const createTree = async (name: string) : Promise<FileNodeJson|null>=> {
-    const tree = new Tree(name)
-    tree.addNode(name)
-    return await readRecursive(name)
-}
+export const createTree = async (
+  name: string
+): Promise<FileNodeJson | null> => {
+  const tree = new Tree(name);
+  tree.addNode(name);
+  return await readRecursive(name);
+};
 
 export const saveByCommits = async (root: string, commits: FileCommit[]) => {
-    return new Promise(async (resolve, reject) => {
-        let sorted = commits.sort((a, b) => a.path.length - b.path.length)
-        let currentSize = await dirSize()
-        let size = 0
-        sorted.forEach((item) => size += (item.content?.data?.length || 0))
-        if (currentSize + size > maxSize) {
-            reject("Out of range")
-        } else {
-            sorted.forEach(commit => {
-                let itemPath = commit.path.slice(0, -1)
-                let itemName = commit.path.at(-1)
-                if (commit.type == "new") {
-                    if (commit.content) {
-                        createFile([root, ...itemPath], itemName!, commit.content?.data || "")
-                    } else {
-                        createFolder([root, ...itemPath], itemName!)
-                    }
-                } else if (commit.type == "delete") {
-                    removeFile([root, ...itemPath, itemName!])
-                } else if (commit.type == "update") {
-                    createFile([root, ...itemPath], itemName!, String(commit.content?.data))
-                }
-            })
-            resolve("Ok")
+  return new Promise(async (resolve, reject) => {
+    let sorted = commits.sort((a, b) => a.path.length - b.path.length);
+    let currentSize = await dirSize();
+    let size = 0;
+    sorted.forEach((item) => (size += item.content?.data?.length || 0));
+    if (currentSize + size > maxSize) {
+      reject("Out of range");
+    } else {
+      sorted.forEach((commit) => {
+        let itemPath = commit.path.slice(0, -1);
+        let itemName = commit.path.at(-1);
+        if (commit.type == "new") {
+          if (commit.content) {
+            createFile(
+              [root, ...itemPath],
+              itemName!,
+              commit.content?.data || ""
+            );
+          } else {
+            createFolder([root, ...itemPath], itemName!);
+          }
+        } else if (commit.type == "delete") {
+          removeFile([root, ...itemPath, itemName!]);
+        } else if (commit.type == "update") {
+          createFile(
+            [root, ...itemPath],
+            itemName!,
+            String(commit.content?.data)
+          );
         }
-    })
-    
-}
+      });
+      resolve("Ok");
+    }
+  });
+};

@@ -5,7 +5,6 @@
 /.pnp
 .pnp.js
 .yarn/install-state.gz
-/structures
 
 # testing
 /coverage
@@ -35,3 +34,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Игнорировать все в папке structures
+structures/*
+
+# Игнорировать все папки в папке structures
+structures/**/
+
+# Не игнорировать файл readme.md в корне папки structures
+!structures/README.md
