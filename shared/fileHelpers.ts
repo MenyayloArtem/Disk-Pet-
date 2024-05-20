@@ -63,7 +63,7 @@ export const readFolder = async (
       p = [fpath];
     }
     fs.readdir(path.join(process.cwd(), mainFolder, ...p), {}, (err, files) => {
-      resolve(files as any);
+      resolve(files.filter(item => !fpath ? item !== "README.md" : true) as any);
       if (err) reject(err);
     });
   });
